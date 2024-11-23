@@ -148,7 +148,6 @@ found:
     release(&p->lock);
     return 0;
   }
-  memset(p->usyscall_page, 0, PGSIZE);  // Initialize usyscall page
   p->usyscall_page->pid = p->pid; // Store process id to usycall_page id 
   // -------------------------------------------------------------------
   // An empty user page table.
@@ -174,16 +173,16 @@ found:
 static void
 freeproc(struct proc *p)
 {
-  if(p->trapframe)
-    kfree((void*)p->trapframe);
-  p->trapframe = 0;
   // ------------------------------------------------------------
   // Free usyscall page
   if (p->usyscall_page) {
     kfree(p->usyscall_page);  
-    p->usyscall_page = 0;     
   }
+  p->usyscall_page = 0;     
   // ------------------------------------------------------------
+  if(p->trapframe)
+    kfree((void*)p->trapframe);
+  p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -209,6 +208,11 @@ proc_pagetable(struct proc *p)
   if(pagetable == 0)
     return 0;
 
+  if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)p->usyscall_page, PTE_V | PTE_R | PTE_U) < 0) {
+        uvmfree(pagetable, 0);
+        return 0;
+      }
+
   // map the trampoline code (for system call return)
   // at the highest user virtual address.
   // only the supervisor uses it, on the way
@@ -228,19 +232,6 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
-  //------------------------------------------------------------------------------
-  // Map USYSCALL if not already mapped
-  if (p->usyscall_page) {
-    if (walk(pagetable, USYSCALL, 0) == 0) {  // Check if already mapped
-      if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)p->usyscall_page, PTE_R | PTE_U) < 0) {
-        uvmunmap(pagetable, TRAPFRAME, 1, 0);
-        uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-        uvmfree(pagetable, 0);
-        return 0;
-      }
-    } 
-  } 
-  // ----------------------------------------------------------------------------------
   return pagetable;
 }
 
@@ -249,15 +240,9 @@ proc_pagetable(struct proc *p)
 void
 proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
+  uvmunmap(pagetable, USYSCALL, 1, 0);
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
-  // --------------------------------------------------
-  // unmap USYSCALL if mapped already
-  pte_t *pte = walk(pagetable, USYSCALL, 0);
-  if ( pte != 0 && (*pte & PTE_V)) {
-    uvmunmap(pagetable, USYSCALL, 1, 0);
-  }
-  // ---------------------------------------------------
   uvmfree(pagetable, sz);
 }
 
@@ -345,15 +330,6 @@ fork(void)
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
-  // -------------------------------------------------------
-  // Map usyscall_page for child process (np) in pagetable
-  if (mappages(np->pagetable, USYSCALL, PGSIZE, (uint64)np->usyscall_page, PTE_R | PTE_U) < 0) {
-      kfree(np->usyscall_page);
-      freeproc(np);
-      release(&np->lock);
-      return -1;
-  }
-  // --------------------------------------------------------
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
