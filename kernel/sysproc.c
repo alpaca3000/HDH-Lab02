@@ -75,6 +75,27 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 start;
+  int pnum;
+  uint64 dest;
+  argaddr(0,&start);
+  argint(1,&pnum);
+  argaddr(2,&dest);
+
+
+  uint64 maskbits = 0;
+  struct proc *proc = myproc();
+  for (int i = 0; i < pnum ; i++ ){
+    pte_t *pte = walk(proc->pagetable, start + PGSIZE*i, 0);// lấy page table entry, nếu là pte A (page tablea entry Accessed) thì thực hiện cập nhật bộ nhớ đệm
+    if(*pte & PTE_A) {
+      maskbits |= (1L << i);
+      *pte &= ~PTE_A;
+    }
+    *pte = ((*pte&PTE_A) ^ *pte) ^ 0 ;// thực hiện xóa bit PTE_A sau khi kiểm tra
+  }
+  if (copyout(proc->pagetable, dest, (char*)&maskbits, sizeof(maskbits)) < 0)// Ghi bitmap vào địa chỉ kết thúc, nếu việc ghi không thành công thì gửi về lỗi
+    return -1;
+
   return 0;
 }
 #endif
