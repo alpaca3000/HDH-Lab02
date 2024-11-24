@@ -449,3 +449,21 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void vmprint(pagetable_t pagetable, int level) {
+    // Nếu đạt cấp độ 3 (giới hạn tối đa của bảng trang), dừng đệ quy
+    if (level == 3) return;
+    for (int i = 0; i < 512; i++) {
+        pte_t pte = pagetable[i];  
+        if (pte & PTE_V) {  
+            // In dấu ".." tương ứng với level hiện tại
+            for (int j = 0; j < level; j++) {
+                printf(" ..");
+            }
+            // In chỉ số PTE, giá trị PTE và địa chỉ vật lý
+            printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+            uint64 child = PTE2PA(pte);  
+            vmprint((pagetable_t)child, level + 1);  
+        }
+    }
+}
