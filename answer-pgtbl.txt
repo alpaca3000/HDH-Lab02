@@ -3,3 +3,22 @@ Q1: Những lệnh gọi hệ thống nào khác trong xv6 có thể được t�
 A1: Các lệnh syscall đọc dữ liệu tĩnh hoặc ít thay đổi khác như uptime, sysinfo có thể được tăng tốc bằng cách sử dụng bảng trang này.
     Lý do: - Syscall uptime trả về số ticks từ khi hệ thống khởi động. Giá trị này liên tục tăng nhưng có thể lưu trong shared page và cập nhật định kỳ bởi kernel.
            - Syscall sysinfo trả về thông tin hệ thống như tổng bộ nhớ, bộ nhớ trống, số tiến trình. Các thông tin này thường chỉ cần đọc từ user space. 
+
+Q2: 
+A2: Trang lá: là cấp cuối cùng trong quá trình phân giải địa chỉ ảo sang địa chỉ vật lý. Mỗi mục nhập PTE ở đây trực tiếp ánh xạ một địa chỉ ảo đến một địa chỉ vật lý. Trang lá chứa:
+1. Địa chỉ vật lý (Physical Address): Trỏ tới các khối bộ nhớ vật lý 4KB được ánh xạ bởi địa chỉ ảo tương ứng.
+2. Quyền truy cập (Access Permissions):
+PTE_V: Hợp lệ.
+PTE_R: Quyền đọc.
+PTE_W: Quyền ghi.
+PTE_X: Quyền thực thi.
+PTE_U: Truy cập từ chế độ user mode.
+3. Ý nghĩa logic:
+Ánh xạ bộ nhớ chứa mã chương trình, dữ liệu, hoặc ngăn xếp.
+Quyền hạn chế cách tiến trình sử dụng vùng nhớ.
+4. Cách đọc đầu ra của vmprint():
+- Đầu ra vmprint() in ra cấu trúc phân cấp của các bảng trang. Các dòng in ở cấp cuối (level = 3) sẽ hiển thị các PTE hợp lệ (với bit PTE_V được thiết lập).
+- Mỗi dòng sẽ cho biết:
+Chỉ số PTE trong bảng trang cấp cuối.
+Địa chỉ vật lý ánh xạ.
+Quyền của PTE, được xác định qua các bit như đã giải thích ở trên.
