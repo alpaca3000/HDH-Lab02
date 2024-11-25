@@ -1,0 +1,5 @@
+Q1: Những lệnh gọi hệ thống nào khác trong xv6 có thể được tăng tốc bằng cách sử dụng trang chia sẻ này? 
+    Hãy giải thích.
+A1: Các lệnh syscall đọc dữ liệu tĩnh hoặc ít thay đổi khác như uptime, sysinfo có thể được tăng tốc bằng cách sử dụng bảng trang này.
+    Lý do: - Syscall uptime trả về số ticks từ khi hệ thống khởi động. Giá trị này liên tục tăng nhưng có thể lưu trong shared page và cập nhật định kỳ bởi kernel.
+           - Syscall sysinfo trả về thông tin hệ thống như tổng bộ nhớ, bộ nhớ trống, số tiến trình. Các thông tin này thường chỉ cần đọc từ user space. 
